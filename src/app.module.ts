@@ -4,6 +4,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AvitoModule } from './avito/avito.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { TunnelModule } from './tunnel/tunnel.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -19,6 +20,7 @@ import configuration from './config/configuration';
     }),
     AvitoModule,
     GatewayModule,
+    TunnelModule,
   ],
 })
 export class AppModule {}
