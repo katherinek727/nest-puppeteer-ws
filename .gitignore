@@ -33,6 +33,9 @@ Thumbs.db
 *.sln
 *.sw?
 
+# Build artifacts
+dist/
+
 # Puppeteer
 .local-chromium/
 puppeteer-data/
