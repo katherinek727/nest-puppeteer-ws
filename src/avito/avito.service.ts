@@ -9,6 +9,7 @@ import { EventEmitter } from 'events';
 import { AppConfig } from '../config/configuration';
 import { AvitoMessage, AvitoServiceStatus } from './avito.types';
 import { BrowserService } from './browser.service';
+import { PollingService } from './polling.service';
 
 @Injectable()
 export class AvitoService
@@ -27,6 +28,7 @@ export class AvitoService
   constructor(
     private readonly configService: ConfigService<AppConfig, true>,
     private readonly browserService: BrowserService,
+    private readonly pollingService: PollingService,
   ) {
     super();
   }
@@ -51,8 +53,24 @@ export class AvitoService
       this.status.isRunning = true;
       this.clearError();
 
-      this.logger.log('AvitoService started — polling will begin shortly');
-      // Polling loop wired in Step 8
+      const page = this.browserService.getPage()!;
+      const targetSender = this.configService.get('avito.targetSender', {
+        infer: true,
+      });
+
+      this.pollingService.start(
+        page,
+        targetSender,
+        (msg) => {
+          this.status.lastPollAt = new Date();
+          this.emitMessage(msg);
+        },
+        (err) => {
+          this.setError(err.message);
+        },
+      );
+
+      this.logger.log('AvitoService started — polling active');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.setError(message);
@@ -81,6 +99,7 @@ export class AvitoService
 
   private async shutdown(): Promise<void> {
     this.status.isRunning = false;
+    this.pollingService.stop();
     await this.browserService.close();
   }
 }
