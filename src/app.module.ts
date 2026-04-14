@@ -5,6 +5,7 @@ import { join } from 'path';
 import { AvitoModule } from './avito/avito.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { TunnelModule } from './tunnel/tunnel.module';
+import { ShutdownService } from './shutdown.service';
 import configuration from './config/configuration';
 
 @Module({
@@ -22,5 +23,6 @@ import configuration from './config/configuration';
     GatewayModule,
     TunnelModule,
   ],
+  providers: [ShutdownService],
 })
 export class AppModule {}
