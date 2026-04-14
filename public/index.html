@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avito Bridge — Live Messages</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ── Reset & Base ─────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --bg-void:        #080b12;
+        --bg-surface:     #0d1117;
+        --bg-card:        rgba(255,255,255,0.04);
+        --bg-card-hover:  rgba(255,255,255,0.07);
+        --border:         rgba(255,255,255,0.08);
+        --border-bright:  rgba(255,255,255,0.15);
+
+        --accent-primary: #00e5ff;
+        --accent-glow:    rgba(0,229,255,0.25);
+        --accent-green:   #00ff9d;
+        --accent-red:     #ff4d6d;
+        --accent-amber:   #ffb830;
+
+        --text-primary:   #f0f4ff;
+        --text-secondary: #8892a4;
+        --text-muted:     #4a5568;
+
+        --radius-sm:  6px;
+        --radius-md:  12px;
+        --radius-lg:  20px;
+        --radius-xl:  28px;
+
+        --shadow-glow: 0 0 40px rgba(0,229,255,0.12);
+        --transition:  all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      html { font-size: 16px; scroll-behavior: smooth; }
+
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        background: var(--bg-void);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ── Background grid ──────────────────────────────────────── */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      body::after {
+        content: '';
+        position: fixed;
+        top: -30%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 800px;
+        height: 500px;
+        background: radial-gradient(ellipse, rgba(0,229,255,0.06) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ── Layout ───────────────────────────────────────────────── */
+      .app {
+        position: relative;
+        z-index: 1;
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 32px 20px 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      /* ── Header ───────────────────────────────────────────────── */
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 28px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        backdrop-filter: blur(20px);
+      }
+
+      .header-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, var(--accent-primary), #0080ff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        box-shadow: 0 0 20px rgba(0,229,255,0.4);
+        flex-shrink: 0;
+      }
+
+      .brand-text h1 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+      }
+
+      .brand-text p {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 1px;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* ── Status pill ──────────────────────────────────────────── */
+      .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 100px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        border: 1px solid transparent;
+        transition: var(--transition);
+        white-space: nowrap;
+      }
+
+      .status-pill.connecting {
+        background: rgba(255,184,48,0.1);
+        border-color: rgba(255,184,48,0.3);
+        color: var(--accent-amber);
+      }
+
+      .status-pill.live {
+        background: rgba(0,255,157,0.1);
+        border-color: rgba(0,255,157,0.3);
+        color: var(--accent-green);
+      }
+
+      .status-pill.error {
+        background: rgba(255,77,109,0.1);
+        border-color: rgba(255,77,109,0.3);
+        color: var(--accent-red);
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        flex-shrink: 0;
+      }
+
+      .status-pill.live .status-dot {
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50%       { opacity: 0.5; transform: scale(0.7); }
+      }
+
+      /* ── Stats bar ────────────────────────────────────────────── */
+      .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .stat-card {
+        padding: 18px 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        backdrop-filter: blur(12px);
+        transition: var(--transition);
+      }
+
+      .stat-card:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-bright);
+      }
+
+      .stat-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+
+      .stat-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--accent-primary);
+        line-height: 1;
+      }
+
+      .stat-value.green  { color: var(--accent-green); }
+      .stat-value.amber  { color: var(--accent-amber); }
+
+      .stat-sub {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* ── Messages panel ───────────────────────────────────────── */
+      .messages-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        backdrop-filter: blur(20px);
+        overflow: hidden;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .panel-title-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent-primary);
+        box-shadow: 0 0 8px var(--accent-primary);
+      }
+
+      .clear-btn {
+        padding: 6px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .clear-btn:hover {
+        border-color: var(--accent-red);
+        color: var(--accent-red);
+        background: rgba(255,77,109,0.08);
+      }
+
+      /* ── Message list ─────────────────────────────────────────── */
+      .messages-list {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 520px;
+        overflow-y: auto;
+        scroll-behavior: smooth;
+      }
+
+      .messages-list::-webkit-scrollbar { width: 4px; }
+      .messages-list::-webkit-scrollbar-track { background: transparent; }
+      .messages-list::-webkit-scrollbar-thumb {
+        background: var(--border-bright);
+        border-radius: 2px;
+      }
+
+      /* ── Empty state ──────────────────────────────────────────── */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 64px 24px;
+        gap: 14px;
+        color: var(--text-muted);
+      }
+
+      .empty-icon {
+        font-size: 2.5rem;
+        opacity: 0.4;
+        animation: float 3s ease-in-out infinite;
+      }
+
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50%       { transform: translateY(-8px); }
+      }
+
+      .empty-state p {
+        font-size: 0.85rem;
+        text-align: center;
+        line-height: 1.6;
+      }
+
+      /* ── Message card ─────────────────────────────────────────── */
+      .message-card {
+        display: flex;
+        gap: 14px;
+        padding: 16px 18px;
+        background: rgba(255,255,255,0.025);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        transition: var(--transition);
+        animation: slide-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .message-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--accent-primary), #0080ff);
+        border-radius: 0 2px 2px 0;
+      }
+
+      .message-card:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-bright);
+        transform: translateX(2px);
+      }
+
+      .message-card.new {
+        border-color: rgba(0,229,255,0.3);
+        box-shadow: 0 0 20px rgba(0,229,255,0.08);
+      }
+
+      @keyframes slide-in {
+        from {
+          opacity: 0;
+          transform: translateY(-12px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .message-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #00e5ff22, #0080ff33);
+        border: 1px solid rgba(0,229,255,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--accent-primary);
+        flex-shrink: 0;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      .message-body { flex: 1; min-width: 0; }
+
+      .message-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        gap: 8px;
+      }
+
+      .message-sender {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--accent-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .message-time {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .message-text {
+        font-size: 0.88rem;
+        color: var(--text-primary);
+        line-height: 1.55;
+        word-break: break-word;
+      }
+
+      .message-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 8px;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-family: 'JetBrains Mono', monospace;
+        transition: var(--transition);
+      }
+
+      .message-link:hover { color: var(--accent-primary); }
+
+      /* ── Error toast ──────────────────────────────────────────── */
+      .toast-container {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 100;
+      }
+
+      .toast {
+        padding: 14px 18px;
+        border-radius: var(--radius-md);
+        font-size: 0.82rem;
+        font-weight: 500;
+        max-width: 340px;
+        border: 1px solid transparent;
+        backdrop-filter: blur(20px);
+        animation: toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .toast.error {
+        background: rgba(255,77,109,0.12);
+        border-color: rgba(255,77,109,0.3);
+        color: #ffb3c1;
+      }
+
+      .toast.fatal {
+        background: rgba(255,77,109,0.2);
+        border-color: rgba(255,77,109,0.5);
+        color: #ff4d6d;
+      }
+
+      @keyframes toast-in {
+        from { opacity: 0; transform: translateX(20px) scale(0.95); }
+        to   { opacity: 1; transform: translateX(0) scale(1); }
+      }
+
+      /* ── Connection overlay ───────────────────────────────────── */
+      .conn-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(8,11,18,0.85);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        transition: opacity 0.4s ease;
+      }
+
+      .conn-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .conn-card {
+        padding: 40px 48px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-bright);
+        border-radius: var(--radius-xl);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        box-shadow: var(--shadow-glow);
+      }
+
+      .conn-spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid var(--border);
+        border-top-color: var(--accent-primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .conn-card h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .conn-card p {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* ── Responsive ───────────────────────────────────────────── */
+      @media (max-width: 600px) {
+        .stats-bar { grid-template-columns: repeat(2, 1fr); }
+        .stats-bar .stat-card:last-child { grid-column: span 2; }
+        .header { flex-direction: column; gap: 14px; align-items: flex-start; }
+        .conn-card { padding: 32px 24px; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Connection overlay -->
+    <div class="conn-overlay" id="connOverlay">
+      <div class="conn-card">
+        <div class="conn-spinner"></div>
+        <h2>Подключение к серверу</h2>
+        <p id="connStatus">Устанавливаем соединение...</p>
+      </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main app -->
+    <div class="app">
+
+      <!-- Header -->
+      <header class="header">
+        <div class="header-brand">
+          <div class="brand-icon">📡</div>
+          <div class="brand-text">
+            <h1>Avito Bridge</h1>
+            <p>real-time message stream</p>
+          </div>
+        </div>
+        <div class="status-pill connecting" id="statusPill">
+          <span class="status-dot"></span>
+          <span id="statusText">Подключение...</span>
+        </div>
+      </header>
+
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-label">Получено</div>
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-sub">сообщений</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Статус сервиса</div>
+          <div class="stat-value green" id="statAuth">—</div>
+          <div class="stat-sub">авторизация</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Последнее</div>
+          <div class="stat-value amber" id="statLast">—</div>
+          <div class="stat-sub">обновление</div>
+        </div>
+      </div>
+
+      <!-- Messages panel -->
+      <div class="messages-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-dot"></span>
+            Входящие сообщения
+          </div>
+          <button class="clear-btn" id="clearBtn">Очистить</button>
+        </div>
+        <div class="messages-list" id="messagesList">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">💬</div>
+            <p>Ожидаем сообщения от Рушана...<br />Они появятся здесь в реальном времени.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      // ── State ──────────────────────────────────────────────────
+      let messageCount = 0;
+      let isFirstMessage = true;
+
+      // ── DOM refs ───────────────────────────────────────────────
+      const connOverlay  = document.getElementById('connOverlay');
+      const connStatus   = document.getElementById('connStatus');
+      const statusPill   = document.getElementById('statusPill');
+      const statusText   = document.getElementById('statusText');
+      const statTotal    = document.getElementById('statTotal');
+      const statAuth     = document.getElementById('statAuth');
+      const statLast     = document.getElementById('statLast');
+      const messagesList = document.getElementById('messagesList');
+      const emptyState   = document.getElementById('emptyState');
+      const clearBtn     = document.getElementById('clearBtn');
+      const toastContainer = document.getElementById('toastContainer');
+
+      // ── Socket.io ──────────────────────────────────────────────
+      const socket = io({ transports: ['websocket', 'polling'] });
+
+      socket.on('connect', () => {
+        connOverlay.classList.add('hidden');
+        setStatus('live', '● В эфире');
+      });
+
+      socket.on('disconnect', () => {
+        connOverlay.classList.remove('hidden');
+        connStatus.textContent = 'Переподключение...';
+        setStatus('connecting', 'Переподключение...');
+      });
+
+      socket.on('connect_error', () => {
+        connStatus.textContent = 'Ошибка соединения — повтор...';
+        setStatus('error', 'Ошибка соединения');
+      });
+
+      // ── Events ─────────────────────────────────────────────────
+      socket.on('message:new', (msg) => {
+        appendMessage(msg, true);
+        messageCount++;
+        statTotal.textContent = messageCount;
+        statLast.textContent = formatTime(new Date());
+      });
+
+      socket.on('service:status', (status) => {
+        statAuth.textContent = status.isAuthenticated ? 'Активна' : 'Нет';
+        statAuth.style.color = status.isAuthenticated
+          ? 'var(--accent-green)'
+          : 'var(--accent-red)';
+        if (status.lastPollAt) {
+          statLast.textContent = formatTime(new Date(status.lastPollAt));
+        }
+      });
+
+      socket.on('service:error', (data) => {
+        showToast('error', '⚠️ ' + data.message);
+        setStatus('error', 'Ошибка сервиса');
+        statAuth.textContent = 'Ошибка';
+        statAuth.style.color = 'var(--accent-red)';
+      });
+
+      socket.on('service:fatal', (data) => {
+        showToast('fatal', '🚨 Критическая ошибка: ' + data.message);
+        setStatus('error', 'Критическая ошибка');
+      });
+
+      // ── Helpers ────────────────────────────────────────────────
+      function setStatus(type, text) {
+        statusPill.className = 'status-pill ' + type;
+        statusText.textContent = text;
+      }
+
+      function appendMessage(msg, isNew) {
+        if (isFirstMessage) {
+          emptyState.remove();
+          isFirstMessage = false;
+        }
+
+        const initials = msg.sender
+          .split(' ')
+          .slice(0, 2)
+          .map(w => w[0])
+          .join('')
+          .toUpperCase();
+
+        const card = document.createElement('div');
+        card.className = 'message-card' + (isNew ? ' new' : '');
+        card.innerHTML = `
+          <div class="message-avatar">${initials}</div>
+          <div class="message-body">
+            <div class="message-meta">
+              <span class="message-sender">${escHtml(msg.sender)}</span>
+              <span class="message-time">${formatTime(new Date(msg.timestamp))}</span>
+            </div>
+            <div class="message-text">${escHtml(msg.text)}</div>
+            ${msg.chatUrl ? `<a class="message-link" href="${escHtml(msg.chatUrl)}" target="_blank" rel="noopener">↗ открыть чат</a>` : ''}
+          </div>
+        `;
+
+        messagesList.insertBefore(card, messagesList.firstChild);
+
+        // Remove "new" highlight after 3s
+        if (isNew) {
+          setTimeout(() => card.classList.remove('new'), 3000);
+        }
+      }
+
+      function showToast(type, message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 6000);
+      }
+
+      function formatTime(date) {
+        return date.toLocaleTimeString('ru-RU', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+      }
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      // ── Clear button ───────────────────────────────────────────
+      clearBtn.addEventListener('click', () => {
+        messagesList.innerHTML = '';
+        messageCount = 0;
+        isFirstMessage = true;
+        statTotal.textContent = '0';
+        messagesList.appendChild(emptyState);
+      });
+    </script>
+  </body>
+</html>
