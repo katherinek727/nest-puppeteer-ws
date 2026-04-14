@@ -1,0 +1,18 @@
+version: '3.9'
+
+# Development override — mounts source for hot-reload
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  avito-bridge:
+    build:
+      target: builder
+    command: npm run start:dev
+    environment:
+      - NODE_ENV=development
+      - PUPPETEER_HEADLESS=false
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - '9229:9229'   # Node.js debugger
