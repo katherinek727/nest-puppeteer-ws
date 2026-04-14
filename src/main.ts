@@ -1,9 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
+import { validateConfig } from './config/config.validator';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
+
+  validateConfig();
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
