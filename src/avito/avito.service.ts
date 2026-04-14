@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter } from 'events';
 import { AppConfig } from '../config/configuration';
 import { AvitoMessage, AvitoServiceStatus } from './avito.types';
+import { BrowserService } from './browser.service';
 
 @Injectable()
 export class AvitoService
@@ -23,13 +24,16 @@ export class AvitoService
     errorMessage: null,
   };
 
-  constructor(private readonly configService: ConfigService<AppConfig, true>) {
+  constructor(
+    private readonly configService: ConfigService<AppConfig, true>,
+    private readonly browserService: BrowserService,
+  ) {
     super();
   }
 
   async onModuleInit(): Promise<void> {
     this.logger.log('AvitoService initializing...');
-    // Browser launch and polling will be wired in subsequent steps
+    await this.start();
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -37,11 +41,28 @@ export class AvitoService
     await this.shutdown();
   }
 
+  private async start(): Promise<void> {
+    try {
+      await this.browserService.launch();
+      await this.browserService.login();
+      await this.browserService.navigateToMessenger();
+
+      this.status.isAuthenticated = true;
+      this.status.isRunning = true;
+      this.clearError();
+
+      this.logger.log('AvitoService started — polling will begin shortly');
+      // Polling loop wired in Step 8
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.setError(message);
+    }
+  }
+
   getStatus(): AvitoServiceStatus {
     return { ...this.status };
   }
 
-  // Called by polling loop — emits to WebSocket gateway
   protected emitMessage(message: AvitoMessage): void {
     this.logger.debug(`New message from ${message.sender}: ${message.text}`);
     this.emit('message', message);
@@ -60,6 +81,6 @@ export class AvitoService
 
   private async shutdown(): Promise<void> {
     this.status.isRunning = false;
-    // Browser teardown will be added in Step 9
+    await this.browserService.close();
   }
 }
